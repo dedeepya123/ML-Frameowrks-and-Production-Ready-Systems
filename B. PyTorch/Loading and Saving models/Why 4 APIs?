@@ -1,0 +1,438 @@
+Lesson 5 – Why do we need FOUR APIs?
+
+This is the lesson that connects everything.
+
+The confusion everyone has
+
+When people first learn PyTorch, they see:
+
+model.state_dict()
+
+model.load_state_dict()
+
+torch.save()
+
+torch.load()
+
+And they think:
+
+"Why so many functions? Couldn't PyTorch have just made one?"
+
+Excellent question.
+
+Let's answer it from first principles.
+
+Step 1 — Imagine there was only one API
+
+Suppose PyTorch had:
+
+save_model(model)
+
+Seems simple.
+
+Now ask:
+
+Can this save a tensor?
+
+tensor = torch.randn(10)
+
+No.
+
+What about:
+
+optimizer.state_dict()
+
+No.
+
+What about:
+
+{
+    "epoch": 10,
+    "loss": 0.12
+}
+
+No.
+
+Suddenly, the API is too specific.
+
+Step 2 — Separate the responsibilities
+
+Instead, PyTorch separates the problem into two independent questions.
+
+Question 1:
+
+What do you want to save?
+
+Question 2:
+
+How do you want to store it?
+
+These are completely different problems.
+
+Problem A — Extract State
+
+Suppose you have:
+
+Model
+│
+├── Parameters
+├── Buffers
+├── Methods
+├── Python attributes
+└── ...
+
+Question:
+
+"What part represents the learned state?"
+
+Answer:
+
+Parameters
+
++
+
+Buffers
+
+That's exactly what:
+
+model.state_dict()
+
+does.
+
+It extracts the model's persistent state.
+
+Notice:
+
+It doesn't save anything.
+
+It just returns an object.
+
+Problem B — Store an Object
+
+Now suppose you already have:
+
+obj = ...
+
+Question:
+
+How do you write it to disk?
+
+That's what:
+
+torch.save(obj)
+
+does.
+
+Notice:
+
+It has no idea where the object came from.
+
+Mental Picture
+
+Think of taking a photograph.
+
+First:
+
+You choose what to photograph.
+
+Second:
+
+You press the camera button.
+
+These are different actions.
+
+Similarly:
+
+Model
+
+↓
+
+Choose State
+
+↓
+
+state_dict()
+
+↓
+
+Dictionary
+
+↓
+
+Store
+
+↓
+
+torch.save()
+Step 3 — Loading is also two separate problems
+
+Imagine tomorrow.
+
+You read the file.
+
+Question:
+
+What should you get?
+
+Answer:
+
+Exactly what you saved.
+
+If you saved:
+
+state_dict
+
+You get:
+
+state_dict
+
+Back.
+
+That's:
+
+torch.load()
+
+Its job ends there.
+
+Now another question appears.
+
+You have:
+
+Dictionary
+
+How does it become a model?
+
+That's a completely different responsibility.
+
+Answer:
+
+model.load_state_dict(...)
+The Four APIs
+
+Now let's look at each one.
+
+API 1
+model.state_dict()
+
+Question it answers:
+
+"What is the persistent state of this model?"
+
+Output:
+
+OrderedDict
+
+Nothing is saved.
+
+API 2
+torch.save(obj)
+
+Question it answers:
+
+"How do I write this object to disk?"
+
+It doesn't care whether:
+
+tensor
+list
+dict
+checkpoint
+state_dict
+API 3
+torch.load(...)
+
+Question it answers:
+
+"Read this file and reconstruct the object."
+
+Still no model involved.
+
+API 4
+model.load_state_dict(...)
+
+Question it answers:
+
+"Copy this saved state into my existing Parameters and Buffers."
+
+Beautiful Pipeline
+
+Everything now fits.
+
+Model
+ │
+ │
+ ▼
+state_dict()
+ │
+ ▼
+OrderedDict
+ │
+ ▼
+torch.save()
+ │
+ ▼
+Disk
+ │
+ ▼
+torch.load()
+ │
+ ▼
+OrderedDict
+ │
+ ▼
+load_state_dict()
+ │
+ ▼
+Model
+
+Every box has exactly one job.
+
+Why this is good software design
+
+Remember our Design Patterns discussions?
+
+One principle kept appearing:
+
+Single Responsibility Principle
+
+Look at these APIs.
+
+state_dict()
+
+Responsibility:
+
+Extract state.
+
+Nothing else.
+
+torch.save()
+
+Responsibility:
+
+Serialize and store.
+
+Nothing else.
+
+torch.load()
+
+Responsibility:
+
+Deserialize.
+
+Nothing else.
+
+load_state_dict()
+
+Responsibility:
+
+Update an existing model.
+
+Nothing else.
+
+Each API has one reason to change.
+
+That's elegant software design.
+
+Why not save the whole model?
+
+You may wonder:
+
+torch.save(model)
+
+This actually exists.
+
+So why have we spent so much time on state_dict()?
+
+Because saving the whole model couples the saved file to:
+
+the exact Python class,
+the module path,
+the code layout.
+
+Imagine this.
+
+Today:
+
+models.py
+
+↓
+
+class MyModel
+
+Tomorrow you refactor:
+
+network.py
+
+↓
+
+class MyModel
+
+The saved object may no longer load correctly because it expects the old class location.
+
+With state_dict():
+
+Weights
+
+↓
+
+Portable
+
+As long as you recreate the architecture, the learned state can usually be loaded.
+
+That's why almost all production code, research code, and libraries—including Hugging Face—prefer saving state, not the entire Python object.
+
+Real Engineering Example
+
+Suppose you're training Gemma.
+
+You don't save:
+
+Entire Python process
+
+You save:
+
+Architecture (defined in code)
+
++
+
+Learned state
+
++
+
+Optional training checkpoint
+
+The Four APIs
+API	Responsibility	Returns
+model.state_dict()	Extract persistent model state	OrderedDict
+torch.save(obj)	Serialize any supported Python object to disk	Writes a file
+torch.load(path)	Read and reconstruct the saved object	Original Python object
+model.load_state_dict(state)	Copy saved state into an existing model	Updates the model in place
+Key Design Principle
+
+These APIs are separated because they solve different problems:
+
+Extract state (state_dict)
+Store object (torch.save)
+Recover object (torch.load)
+Apply state (load_state_dict)
+Biggest takeaway
+
+When you see:
+
+torch.save(model.state_dict(), "model.pt")
+
+Don't think of it as one operation.
+
+Think of it as two independent steps:
+
+Model
+   │
+   ├── Extract persistent state
+   ▼
+OrderedDict
+   │
+   ├── Serialize and write to disk
+   ▼
+File
+
+That mental separation will make many later concepts—including checkpoints, Hugging Face model packaging, and deployment—feel much more natural.

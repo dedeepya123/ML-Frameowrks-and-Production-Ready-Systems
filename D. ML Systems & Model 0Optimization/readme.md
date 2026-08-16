@@ -1,4 +1,4 @@
-
+``` text
 MODULE 1  → Inference System & Bottlenecks
 MODULE 2  → Compute vs Memory
 MODULE 3  → Transformer Inference Cost

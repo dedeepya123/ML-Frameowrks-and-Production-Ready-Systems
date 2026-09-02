@@ -150,5 +150,55 @@ Tensor Parallelism:
 4. What data must move?
 5. Which collective communication is needed?
 6. Which layer implements the partitioning?
-7. What interconnect carries the data?
-8. Is communication worth the computation saved?
+
+Whenever you encounter "Tensor Parallelism" in a paper, codebase, or inference engine, ask:
+
+1. Why?
+Does the model not fit?
+Is computation too expensive?
+Is latency too high?
+2. What is partitioned?
+Weight columns?
+Weight rows?
+Attention heads?
+MLP intermediate dimension?
+Something else?
+3. What does each device compute?
+
+Write the actual equation.
+
+For example:
+
+Y0 = XW0
+Y1 = XW1
+4. What needs to be communicated?
+X?
+Y?
+Partial sums?
+Attention outputs?
+5. Which collective?
+AllGather?
+AllReduce?
+ReduceScatter?
+6. Who implements it?
+Model code?
+Distributed framework?
+Inference engine?
+Communication library?
+Runtime?
+7. How does the data physically move?
+``` text
+GPU memory
+   ↓
+communication mechanism
+   ↓
+PCIe / NVLink / interconnect
+   ↓
+other GPU
+8. Is communication cheaper than the computation we saved?
+
+That's ultimately the performance question.
+8. What interconnect carries the data?
+9. Is communication worth the computation saved?
+```
+<img width="1217" height="672" alt="image" src="https://github.com/user-attachments/assets/e84c58df-f815-40dc-9e92-a38bd5913d38" />

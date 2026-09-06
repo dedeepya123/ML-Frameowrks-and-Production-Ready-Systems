@@ -238,3 +238,22 @@ When reading runtime/compiler code, ask:
 ### One-line takeaway
 
 > **A computation graph turns tensor computation into an explicit representation of operations and dependencies, giving the compiler a global view from which it can optimize and lower the workload for hardware.**
+
+**Summary**
+Python code
+    = how the programmer describes the computation
+
+Graph / IR
+    = what computation needs to happen
+
+Compiler
+    = how to transform that computation for the target
+
+Runtime
+    = how to execute the resulting workload
+
+Kernel
+    = concrete implementation of an operation
+
+Hardware
+    = where the computation physically executes
